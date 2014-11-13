@@ -12,3 +12,5 @@ This script allows you to control the Clip Launcher in bitwig Studio with the 12
 - The first seven keys in the lower row fire clips in the designated tack bank.You can stop playing clips my holding down the corresponding key. The last key will fire the scene. 
 - The first two kesy in the top row will move the track bank up and down. The next two keys will fire the previous or next scene. 
 - The final key will stop all clips. 
+
+There will be parameter control coming soon!
