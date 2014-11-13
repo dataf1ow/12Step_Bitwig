@@ -18,20 +18,31 @@ host.defineMidiPorts(1, 1);
 var portNames 	= 	["12Step Port 1"];
 host.addDeviceNameBasedDiscoveryPair(portNames, portNames);
 
-//Define/set sysex call/response (deprecated, included for good measure)
-host.defineSysexDiscovery("F0 7E 7F 06 01 F7", "F0 7E 00 06 02 00 01 5F 19 00 00 00 ?? ?? ?? ?? ?? ?? F7"); 
+//Loading external Files
+load("12Step_functions.js")
 
 //Declare some global vars for a few of the interface types defined in the API
 var application, arranger, mixer, transport;
 var HIGHEST_CC = 119;
 var LOWEST_CC = 1;
+var NUM_TRACKS = 7;
+var NUM_SCENES = 1;
+var NUM_SENDS = 2;
+var hasContent = initArray(0, 8);
+var isPlaying = initArray(0, 8);
+var isRecording = initArray(0, 8);
+var isQueued = initArray(0, 8);
+var pendingLEDs = initArray(0, 8);
+var currentLEDs = initArray(0,8);
+var selectedTrack = 0;
+var canScrollUp = false
 //------------------------------------ Init -----------------------------------//
 function init()
 {
 	//-------- Set MIDI callbacks / port
-	host.getMidiInPort(0).setMidiCallback(onMidiPort1);
+	host.getMidiInPort(0).setMidiCallback(onMidi);
 	
-	host.getMidiInPort(0).setSysexCallback(onSysexPort1);
+	//host.getMidiInPort(0).setSysexCallback(onSysexPort1);
 	
 	
 	//-------- Note Inputs (see REF below for argument details
@@ -46,32 +57,89 @@ function init()
       userControls.getControl(i - LOWEST_CC).setLabel("CC" + i);
    }
 
-	//-------- Initialize bitwig interfaces
-	//application = host.createApplication();
-	//arranger = host.createArranger(0);
-	//mixer = host.createMixer("perspective?",0);
+	
+	application = host.createApplication();
+	trackBankMain = host.createTrackBank(NUM_TRACKS, NUM_SENDS, NUM_SCENES);
+	trackBankAbove = host.createTrackBank(NUM_TRACKS, NUM_SENDS, NUM_SCENES)
+	trackBankBelow = host.createTrackBank(NUM_TRACKS, NUM_SENDS, NUM_SCENES)
+	cursorTrack = host.createCursorTrack(2, NUM_SCENES);
 	transport = host.createTransport();
-	println("This is the 12Step Script")
+	arranger = host.createArranger(0);
+	master = host.createMasterTrack(8);
+	cursorTrack = host.createCursorTrack(2, 0);
+	primaryDevice = cursorTrack.getPrimaryDevice();
+	//println("This is the SoftStep Script")
+
+	cursorTrack.addPositionObserver(function(track)
+	{
+		selectedTrack = track
+		trackBankMain.scrollToTrack(track)
+	})
+
+	trackBankMain.addCanScrollScenesUpObserver(function(scrollUp)
+	{
+		
+		if (scrollUp == true)
+		{
+			
+			sendMidi(176, 21, 1)
+		}else 
+		{
+			
+			sendMidi(176, 21, 0)
+			
+		}
+	})
+
+	trackBankMain.addCanScrollScenesDownObserver(function(scrollDown)
+	{
+		
+		if (scrollDown == true)
+		{
+			
+			sendMidi(176, 23, 1)
+		}else
+		{
+			
+			sendMidi(176, 23, 0)
+		}
+	})
+
+	for (var t = 0; t < NUM_TRACKS; t++)
+		{
+			var track = trackBankMain.getTrack(t); 
+			var clipLauncher = track.getClipLauncher();
+			clipLauncher.setIndication(true);
+			
+			clipLauncher.addHasContentObserver(getGridObserverFunc(t, hasContent));
+      		clipLauncher.addIsPlayingObserver(getGridObserverFunc(t, isPlaying));
+      		clipLauncher.addIsRecordingObserver(getGridObserverFunc(t, isRecording));
+      		clipLauncher.addIsQueuedObserver(getGridObserverFunc(t, isQueued));
+		}
+	
 }
 
 //--------------------------- MIDI Callbacks / Port ---------------------------//
-function onMidiPort1(status, data1, data2)
+function onMidi(status, data1, data2)
 {
 	//println("Port 1 [status, data1, data2]: " + status + ", " + data1 + ", " + data2);
 
 	
 	if(status == 233)
 	{
-		println("pitchBend" + " " + data1 + " " + data2)
+		//println("pitchBend" + " " + data1 + " " + data2)
 
-	}else if(status == 153){
+	}else if(status == 145){
 
-		println("Notes"  + " " + data1 + " " + data2)
+		//println("Notes"  + " " + data1 + " " + data2)
+		launchClipSlots(data1, data2);
+		scrollTrackBank(data1, data2);
+		launchScenes(data1, data2)
 
 	}else if (status == 185){
 
-		println("CC"  + " " + data1 + " " + data2)
-		sendMidi(status, data1, data2)
+		//println("CC"  + " " + data1 + " " + data2)
+		
 	}
 
 
@@ -87,35 +155,15 @@ function onMidiPort1(status, data1, data2)
 
 }
 
-function onMidiPort2(status, data1, data2)
-{
-	println("Port 2 [status, data1, data2]: " + status + ", " + data1 + ", " + data2);
-}
 
-function onMidiPort3(status, data1, data2)
-{
-	println("Port 3 [status, data1, data2]: " + status + ", " + data1 + ", " + data2);
-}
-
-function onSysexPort1(data)
-{
-	println("Port 1 [sysex data]: " + data);
-}
-
-function onSysexPort2(data)
-{
-	println("Port 2 [sysex data]: " + data);
-}
-
-function onSysexPort3(data)
-{
-	println("Port 3 [sysex data]: " + data);
-}
 
 function exit()
 {
-	println("exit.");
+	println("exit."); 
 }
+
+
+
 
 //--------------------------------- Interfaces --------------------------------//
 
