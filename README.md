@@ -5,7 +5,7 @@ Bitwig Script for the KMI 12Step
 
 Installation
 
-Import the 'Bitwig Clip Launching' preset into your 12step editor and load it onto the device. 
+- Import the 'Bitwig Clip Launching' preset into your 12step editor and load it onto the device. 
 
 
 This script allows you to control the Clip Launcher in bitwig Studio with the 12Step from Keith Mcmillen Instruments. 
